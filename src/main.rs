@@ -7,6 +7,12 @@ mod netlist;
 
 use crate::elements::Element;
 use crate::netlist::Netlist;
+use crate::matrix::CircuitMatrix;
+
+use crate::elements::VoltageSource;
+use crate::elements::Resistor;
+use crate::elements::Capacitor;
+use crate::elements::Inductor;
 
 use std::f64::consts::PI as PI;
 use std::collections::HashMap;
@@ -14,21 +20,26 @@ use std::collections::HashMap;
 use ndarray::*;
 
 fn main() {
-    let mut v = HashMap::new();
-    let mut r = HashMap::new();
-    let mut c = HashMap::new();
-    let mut l = HashMap::new();
-
-    v.insert("v1".to_string(), Element{ pos: 1, neg: 2, value: 3.0 });
-    r.insert("r1".to_string(), Element{ pos: 2, neg: 3, value: 0.3 });
-    l.insert("l1".to_string(), Element{ pos: 3, neg: 4, value: 1.0e-9 });
-    c.insert("c1".to_string(), Element{ pos: 4, neg: 1, value: 3.0e-6 });
-    c.insert("l1".to_string(), Element{ pos: 4, neg: 1, value: 3.0e-6 });
-    let netlist = Netlist { v, r, c, l };
+    let c1_element = Element { pos: 2, neg: 0, value: 3.0 };
+    let c2_element = Element { pos: 3, neg: 0, value: 3.0 };
+    let r1_element = Element { pos: 0, neg: 1, value: 3.0 };
+    let r2_element = Element { pos: 1, neg: 2, value: 3.0 };
+    let mut netlist = Netlist { 
+            v: HashMap::new(),
+            r: HashMap::new(),
+            c: HashMap::new(),
+            l: HashMap::new(),
+    };
+    netlist.c.insert(String::from("c1"), c1_element);
+    netlist.c.insert(String::from("c2"), c2_element);
+    netlist.r.insert(String::from("r1"), r1_element);
+    netlist.r.insert(String::from("r2"), r2_element);
 
     println!("");
     println!("----- Runnning Netlist -----");
+
     println!("{:?}", &netlist);
+
     println!("----- Runnning Netlist -----");
     println!("");
 
@@ -37,8 +48,21 @@ fn main() {
     let ang_freq_arr = 2f64 * PI * frequencies_arr;
 
     println!("----- Arg freq for analysis -----");
+
     println!("{:?}", ang_freq_arr);
+
     println!("----- Arg freq for analysis -----");
+    println!("");
+
+    println!("----- debug matrix -----");
+
+    let mut matrix = CircuitMatrix::new();
+    matrix.create_mat_vec(netlist);
+    let mat_vec = matrix.get_current_mat_vec();
+    println!("mat: {}", mat_vec.0);
+    println!("vec: {}", mat_vec.1);
+    
+    println!("----- debug matrix -----");
     println!("");
 }
 
@@ -46,6 +70,7 @@ fn main() {
 mod tests {
     use super::*;
 
+    /*
     #[test]
     fn netlist() {
         let mut v = HashMap::new();
@@ -67,4 +92,5 @@ mod tests {
 
         netlist.v.values().into_iter().for_each(|x| println!("first elem = {}, seconde elem = {}" , x.pos, x.neg));
     }
+    */
 }

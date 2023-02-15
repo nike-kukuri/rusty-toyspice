@@ -12,3 +12,9 @@ pub struct Netlist {
     pub c: HashMap<String, Element>,
     pub l: HashMap<String, Element>,
 }
+
+impl Netlist {
+    fn total_elements(&self) -> usize {
+       self.v.len() + self.r.len() + self.c.len() + self.l.len()
+    }
+}
