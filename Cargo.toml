@@ -9,4 +9,5 @@ edition = "2021"
 approx = "0.5.1"
 ndarray = "0.15"
 ndarray-linalg = { version = "0.16", features = ["intel-mkl"] }
+num-complex = "0.4"
 anyhow = "1.0.58"

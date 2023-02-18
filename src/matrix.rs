@@ -2,9 +2,10 @@
 #![warn(unused_imports)]
 #![warn(dead_code)]
 
+use anyhow::Result;
+use num_complex::{Complex, Complex64};
 use ndarray::*;
 use ndarray_linalg::*;
-use anyhow::{Context, Result};
 
 use crate::netlist::Netlist;
 use crate::elements::{Element, ElementType};
@@ -15,18 +16,18 @@ trait ExtendWith0 {
     fn extend_with0(&mut self);
 }
 
-impl ExtendWith0 for ArrayBase<OwnedRepr<f64>, Dim<[usize; 2]>> {
+impl ExtendWith0 for ArrayBase<OwnedRepr<Complex64>, Dim<[usize; 2]>> {
     fn extend_with0(&mut self) {
         let shape = self.shape();
         let (m, n) = (shape[0], shape[1]);
-        self.push_column(ArrayView::from(&vec![0.; m])).ok();
-        self.push_row(ArrayView::from(&vec![0.; n+1])).ok();
+        self.push_column(ArrayView::from(&vec![Complex64::new(0., 0.); m])).ok();
+        self.push_row(ArrayView::from(&vec![Complex64::new(0., 0.); n+1])).ok();
     }
 }
 
-impl ExtendWith0 for ArrayBase<OwnedRepr<f64>, Dim<[usize; 1]>> {
+impl ExtendWith0 for ArrayBase<OwnedRepr<Complex64>, Dim<[usize; 1]>> {
     fn extend_with0(&mut self) {
-        self.append(Axis(0), ArrayView::from(&vec![0.; 1]));
+        self.append(Axis(0), ArrayView::from(&vec![Complex64::new(0., 0.); 1]));
     }
 }
 
@@ -63,16 +64,19 @@ fn get_element_type(elem: &str) -> Option<ElementType> {
 
 #[derive(Debug)]
 pub struct CircuitMatrix {
-    pub mat: Array2<f64>,
-    pub vec: Array1<f64>,
+    pub mat: Array2<Complex64>,
+    pub vec: Array1<Complex64>,
     pub nodes: Array1<usize>, //TODO usize -> generics としたい
 }
 
 impl CircuitMatrix {
     pub fn new() -> Self {
         // 初期化された最小の２行２列のマトリックスと２要素の配列を返す
-        let a = array![[0., 0.], [0., 0.]];
-        let b = array![0., 0.];
+        let a = array![
+            [Complex64::new(0., 0.), Complex64::new(0., 0.)], 
+            [Complex64::new(0., 0.), Complex64::new(0., 0.)]
+        ];
+        let b = array![Complex64::new(0., 0.), Complex64::new(0., 0.)];
         let c = array![0, 1];
         CircuitMatrix { mat: a, vec: b, nodes: c }
     }
@@ -86,7 +90,7 @@ impl CircuitMatrix {
             // ノードリストをアップデートする
             self.update_nodes(element.1.pos, element.1.neg);
             // element ごとのタイプを確認し、固有の行列とベクトルを格納
-            let elem_mat_vec: (Array2<f64>, Array1<f64>);
+            let elem_mat_vec: (Array2<Complex64>, Array1<Complex64>);
             if let Some(etype) = etype {
                 elem_mat_vec = self.gen_mat_vec_from_element(element.1, etype);
             } else {
@@ -99,8 +103,8 @@ impl CircuitMatrix {
         }
     }
 
-    fn gen_mat_vec_from_element(&mut self, elem: Element, etype: ElementType) -> (Array2<f64>, Array1<f64>){
-        let elem_mat_vec: (Array2<f64>, Array1<f64>);
+    fn gen_mat_vec_from_element(&mut self, elem: Element, etype: ElementType) -> (Array2<Complex64>, Array1<Complex64>){
+        let elem_mat_vec: (Array2<Complex64>, Array1<Complex64>);
         // 素子の固有行列と固有ベクトルを取得してくる。ノードリストもアップデートする
         match etype {
             ElementType::V => elem_mat_vec = self.gen_mat_vec_V(elem),
@@ -111,10 +115,10 @@ impl CircuitMatrix {
         elem_mat_vec
     }
 
-    fn extend_elem_mat_vec(&mut self, elem_mat_vec: (Array2<f64>, Array1<f64>), pos: usize, neg: usize) -> (Array2<f64>, Array1<f64>) {
+    fn extend_elem_mat_vec(&mut self, elem_mat_vec: (Array2<Complex64>, Array1<Complex64>), pos: usize, neg: usize) -> (Array2<Complex64>, Array1<Complex64>) {
         // 要素０の行列とベクトルを生成
-        let mut arr: Array2<f64> = Array::zeros((self.nodes.len(), self.nodes.len()));
-        let mut vec: Array1<f64> = Array::zeros(self.nodes.len());
+        let mut arr: Array2<Complex64> = Array::zeros((self.nodes.len(), self.nodes.len()));
+        let mut vec: Array1<Complex64> = Array::zeros(self.nodes.len());
         // nodes から素子の接続されている要素インデックスを取得
         let mut node_i1: usize = 0;
         let mut node_i2: usize = 0;
@@ -167,17 +171,17 @@ impl CircuitMatrix {
     }
 
     /*
-    fn complete_zero_element_mat_vec(&mut self, ex_mat_vec: &(Array2<f64>, Array1<f64>)) -> () {
+    fn complete_zero_element_mat_vec(&mut self, ex_mat_vec: &(Array2<Complex64>, Array1<Complex64>)) -> () {
         unimplemented!();
     }
     */
 
-    fn add_mat_vec(&mut self, mat_vec: &(Array2<f64>, Array1<f64>)) -> () {
+    fn add_mat_vec(&mut self, mat_vec: &(Array2<Complex64>, Array1<Complex64>)) -> () {
         self.mat = &self.mat + mat_vec.0.clone();
         self.vec = &self.vec + mat_vec.1.clone();
     }
 
-    pub fn get_current_mat_vec(&self) -> (Array2<f64>, Array1<f64>) {
+    pub fn get_current_mat_vec(&self) -> (Array2<Complex64>, Array1<Complex64>) {
         (self.mat.clone(), self.vec.clone())
     }
 
@@ -185,8 +189,8 @@ impl CircuitMatrix {
         self.nodes.len()
     }
 
-    pub fn solve(&self) -> Result<Array1<f64>> {
-        let result: Array1<f64> = self.mat.solve_into(self.vec.clone())?;
+    pub fn solve(&self) -> Result<Array1<Complex64>> {
+        let result: Array1<Complex64> = self.mat.solve_into(self.vec.clone())?;
         Ok(result)
     }
   }

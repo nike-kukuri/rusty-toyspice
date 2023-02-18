@@ -826,6 +826,7 @@ dependencies = [
  "approx 0.5.1",
  "ndarray",
  "ndarray-linalg",
+ "num-complex",
 ]
 
 [[package]]
