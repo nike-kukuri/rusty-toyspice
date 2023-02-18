@@ -9,11 +9,6 @@ use crate::elements::Element;
 use crate::netlist::Netlist;
 use crate::matrix::CircuitMatrix;
 
-use crate::elements::VoltageSource;
-use crate::elements::Resistor;
-use crate::elements::Capacitor;
-use crate::elements::Inductor;
-
 use std::f64::consts::PI as PI;
 use std::collections::HashMap;
 
@@ -37,9 +32,7 @@ fn main() {
 
     println!("");
     println!("----- Runnning Netlist -----");
-
     println!("{:?}", &netlist);
-
     println!("----- Runnning Netlist -----");
     println!("");
 
@@ -48,21 +41,21 @@ fn main() {
     let ang_freq_arr = 2f64 * PI * frequencies_arr;
 
     println!("----- Arg freq for analysis -----");
-
     println!("{:?}", ang_freq_arr);
-
     println!("----- Arg freq for analysis -----");
     println!("");
-
     println!("----- debug matrix -----");
-
     let mut matrix = CircuitMatrix::new();
-    matrix.create_mat_vec(netlist);
-    let mat_vec = matrix.get_current_mat_vec();
-    println!("mat: {}", mat_vec.0);
-    println!("vec: {}", mat_vec.1);
-    
+    matrix.create_mat_vec_from_netlist(netlist);
+    let (mat, vec) = matrix.get_current_mat_vec();
+    println!("mat: {}", mat);
+    println!("vec: {}", vec);
     println!("----- debug matrix -----");
+    println!("");
+    println!("----- solve  -----");
+    let result = matrix.solve();
+    println!("result: \n{:?}", result);
+    println!("----- solve  -----");
     println!("");
 }
 

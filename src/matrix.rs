@@ -1,12 +1,34 @@
 #![warn(unused_variables)]
 #![warn(unused_imports)]
 #![warn(dead_code)]
+
+use ndarray::*;
+use ndarray_linalg::*;
+use anyhow::{Context, Result};
+
 use crate::netlist::Netlist;
 use crate::elements::{Element, ElementType};
 use crate::elements::{VoltageSource, Capacitor, Resistor, Inductor};
 
-use ndarray::*;
-use ndarray_linalg::*;
+
+trait ExtendWith0 {
+    fn extend_with0(&mut self);
+}
+
+impl ExtendWith0 for ArrayBase<OwnedRepr<f64>, Dim<[usize; 2]>> {
+    fn extend_with0(&mut self) {
+        let shape = self.shape();
+        let (m, n) = (shape[0], shape[1]);
+        self.push_column(ArrayView::from(&vec![0.; m])).ok();
+        self.push_row(ArrayView::from(&vec![0.; n+1])).ok();
+    }
+}
+
+impl ExtendWith0 for ArrayBase<OwnedRepr<f64>, Dim<[usize; 1]>> {
+    fn extend_with0(&mut self) {
+        self.append(Axis(0), ArrayView::from(&vec![0.; 1]));
+    }
+}
 
 fn change_vec_from_netlist(netlist: &Netlist) -> Vec<(&str, Element)> {
     let mut vec = Vec::new();
@@ -56,7 +78,7 @@ impl CircuitMatrix {
     }
 
     // main method
-    pub fn create_mat_vec(&mut self, netlist: Netlist) -> () {
+    pub fn create_mat_vec_from_netlist(&mut self, netlist: Netlist) -> () {
         let elements = change_vec_from_netlist(&netlist);
         for element in elements.iter() {
         // element: tuple (1: instance(&str), 2: element(struct Element))
@@ -71,7 +93,7 @@ impl CircuitMatrix {
                 break;
             }
             // 素子行列とベクトルを拡張(０で補完)
-            let extended_elem_mat_vec = self.extend_mat_vec(elem_mat_vec, element.1.pos, element.1.neg);
+            let extended_elem_mat_vec = self.extend_elem_mat_vec(elem_mat_vec, element.1.pos, element.1.neg);
             // 元の行列・ベクトルと素子の行列・ベクトルを加算
             self.add_mat_vec(&extended_elem_mat_vec);
         }
@@ -89,7 +111,7 @@ impl CircuitMatrix {
         elem_mat_vec
     }
 
-    fn extend_mat_vec(&mut self, elem_mat_vec: (Array2<f64>, Array1<f64>), pos: usize, neg: usize) -> (Array2<f64>, Array1<f64>) {
+    fn extend_elem_mat_vec(&mut self, elem_mat_vec: (Array2<f64>, Array1<f64>), pos: usize, neg: usize) -> (Array2<f64>, Array1<f64>) {
         // 要素０の行列とベクトルを生成
         let mut arr: Array2<f64> = Array::zeros((self.nodes.len(), self.nodes.len()));
         let mut vec: Array1<f64> = Array::zeros(self.nodes.len());
@@ -123,6 +145,7 @@ impl CircuitMatrix {
     }
 
     fn update_nodes(&mut self, pos: usize, neg: usize) -> () {
+        // self.nodesを素子のつながっているノードを見て更新する
         let is_pos = self.nodes.iter().any(|node| node==&pos);
         let is_neg = self.nodes.iter().any(|node| node==&neg);
         if !is_pos {
@@ -130,12 +153,16 @@ impl CircuitMatrix {
                 Axis(0),
                 ArrayView1::from(&[pos])
             );
+            self.mat.extend_with0();
+            self.vec.extend_with0();
         }
         if !is_neg {
             self.nodes.append(
                 Axis(0),
                 ArrayView1::from(&[neg])
             );
+            self.mat.extend_with0();
+            self.vec.extend_with0();
         }
     }
 
@@ -146,29 +173,20 @@ impl CircuitMatrix {
     */
 
     fn add_mat_vec(&mut self, mat_vec: &(Array2<f64>, Array1<f64>)) -> () {
-        /*
         self.mat = &self.mat + mat_vec.0.clone();
         self.vec = &self.vec + mat_vec.1.clone();
-        */
-        println!("---");
-        print!("element matrix:\n {}\n", mat_vec.0);
-        println!("element vector: {}", mat_vec.1);
-        print!("circuit matrix:\n {}\n", self.mat);
-        println!("circuit vector: {}", self.vec);
-        println!("nodes: {}", self.nodes);
-        println!("---");
     }
 
-    pub fn get_current_mat_vec(self) -> (Array2<f64>, Array1<f64>) {
-        (self.mat, self.vec)
+    pub fn get_current_mat_vec(&self) -> (Array2<f64>, Array1<f64>) {
+        (self.mat.clone(), self.vec.clone())
     }
 
-    pub fn get_number_of_nodes(self) -> usize {
+    pub fn get_number_of_nodes(&self) -> usize {
         self.nodes.len()
     }
 
-    pub fn solve(&self) -> Result<Array1<f64>, error::LinalgError> {
-        let result: Array1<f64> = self.mat.solve(&self.vec)?;
+    pub fn solve(&self) -> Result<Array1<f64>> {
+        let result: Array1<f64> = self.mat.solve_into(self.vec.clone())?;
         Ok(result)
     }
   }
@@ -194,7 +212,7 @@ mod tests {
         netlist.r.insert(String::from("r2"), r2_element);
 
         let mut matrix = CircuitMatrix::new();
-        matrix.create_mat_vec(netlist);
+        matrix.create_mat_vec_from_netlist(netlist);
         let mat_vec = matrix.get_current_mat_vec();
         println!("mat: {}", mat_vec.0);
         println!("vec: {}", mat_vec.1);
