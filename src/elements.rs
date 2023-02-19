@@ -23,14 +23,17 @@ pub struct Element {
 
 pub trait VoltageSource {
     fn gen_mat_vec_V(&mut self, elem: Element) -> (Array2<Complex64>, Array1<Complex64>);
+    fn ac_mat_vec_V(&mut self, elem_mat: Array2<Complex64>,  omega: f64) -> (Array2<Complex64>);
 }
 
 pub trait Resistor {
     fn gen_mat_vec_R(&mut self, elem: Element) -> (Array2<Complex64>, Array1<Complex64>);
+    fn ac_mat_vec_R(&mut self, elem_mat: Array2<Complex64>,  _omega: f64) -> (Array2<Complex64>);
 }
 
 pub trait Capacitor {
     fn gen_mat_vec_C(&mut self, elem: Element) -> (Array2<Complex64>, Array1<Complex64>);
+    fn ac_mat_vec_C(&mut self, elem_mat: Array2<Complex64>,  omega: f64) -> (Array2<Complex64>);
 }
 
 pub trait Inductor {
@@ -48,6 +51,9 @@ impl VoltageSource for CircuitMatrix {
         let b = arr1(&[Complex64::new(0., 0.), Complex64::new(0., 0.), Complex::new(-E, 0.)]);
         (a, b)
     }
+    fn ac_mat_vec_V(&mut self, mut elem_mat: Array2<Complex64>, omega: f64) -> Array2<Complex64> {
+        elem_mat.map_mut(|x| *x * Complex64::new(0., omega)) //TODO
+    }
 }
 
 impl Resistor for CircuitMatrix {
@@ -59,6 +65,9 @@ impl Resistor for CircuitMatrix {
         let b = arr1(&[Complex64::new(0., 0.), Complex64::new(0., 0.)]);
         (a, b)
     }
+    fn ac_mat_vec_R(&mut self, mut elem_mat: Array2<Complex64>, omega: f64) -> Array2<Complex64> {
+        elem_mat.map_mut(|x| *x * Complex64::new(0., omega)) //TODO
+    }
 }
 
 impl Capacitor for CircuitMatrix {
@@ -69,6 +78,9 @@ impl Capacitor for CircuitMatrix {
             [Complex64::new(-C, 0.), Complex::new(C, 0.)]];
         let b = arr1(&[Complex64::new(0., 0.), Complex64::new(0., 0.)]);
         (a, b)
+    }
+    fn ac_mat_vec_C(&mut self, mut elem_mat: Array2<Complex64>, omega: f64) -> Array2<Complex64> {
+        elem_mat.map_mut(|x| *x * Complex64::new(0., omega)) //TODO
     }
 }
 

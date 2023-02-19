@@ -11,6 +11,11 @@ use crate::netlist::Netlist;
 use crate::elements::{Element, ElementType};
 use crate::elements::{VoltageSource, Capacitor, Resistor, Inductor};
 
+pub enum Analysis {
+    DC,
+    AC,
+    Tran,
+}
 
 trait ExtendWith0 {
     fn extend_with0(&mut self);
@@ -82,7 +87,7 @@ impl CircuitMatrix {
     }
 
     // main method
-    pub fn create_mat_vec_from_netlist(&mut self, netlist: Netlist) -> () {
+    pub fn create_mat_vec_from_netlist(&mut self, netlist: &Netlist, analysis: Analysis, omega: f64) -> () {
         let elements = change_vec_from_netlist(&netlist);
         for element in elements.iter() {
         // element: tuple (1: instance(&str), 2: element(struct Element))
@@ -90,9 +95,14 @@ impl CircuitMatrix {
             // ノードリストをアップデートする
             self.update_nodes(element.1.pos, element.1.neg);
             // element ごとのタイプを確認し、固有の行列とベクトルを格納
-            let elem_mat_vec: (Array2<Complex64>, Array1<Complex64>);
+            let mut elem_mat_vec: (Array2<Complex64>, Array1<Complex64>);
             if let Some(etype) = etype {
-                elem_mat_vec = self.gen_mat_vec_from_element(element.1, etype);
+                elem_mat_vec = self.gen_mat_vec_from_element(element.1, &etype);
+                match analysis {
+                    Analysis::DC => (),
+                    Analysis::AC => { elem_mat_vec = self.ac_mat_vec(elem_mat_vec, etype, omega) },
+                    Analysis::Tran => unimplemented!(),
+                }
             } else {
                 break;
             }
@@ -103,7 +113,7 @@ impl CircuitMatrix {
         }
     }
 
-    fn gen_mat_vec_from_element(&mut self, elem: Element, etype: ElementType) -> (Array2<Complex64>, Array1<Complex64>){
+    fn gen_mat_vec_from_element(&mut self, elem: Element, etype: &ElementType) -> (Array2<Complex64>, Array1<Complex64>){
         let elem_mat_vec: (Array2<Complex64>, Array1<Complex64>);
         // 素子の固有行列と固有ベクトルを取得してくる。ノードリストもアップデートする
         match etype {
@@ -170,6 +180,16 @@ impl CircuitMatrix {
         }
     }
 
+    fn ac_mat_vec(&mut self, elem_mat_vec: (Array2<Complex64>, Array1<Complex64>), etype: ElementType, omega: f64) -> (Array2<Complex64>, Array1<Complex64>) {
+        let mat = match etype {
+            ElementType::V => self.ac_mat_vec_V(elem_mat_vec.0, omega),
+            ElementType::C => self.ac_mat_vec_C(elem_mat_vec.0, omega),
+            ElementType::R => self.ac_mat_vec_R(elem_mat_vec.0, omega),
+            ElementType::L => self.ac_mat_vec_R(elem_mat_vec.0, omega),
+        };
+        (mat, elem_mat_vec.1)
+    }
+
     /*
     fn complete_zero_element_mat_vec(&mut self, ex_mat_vec: &(Array2<Complex64>, Array1<Complex64>)) -> () {
         unimplemented!();
@@ -214,11 +234,5 @@ mod tests {
         netlist.c.insert(String::from("c1"), c1_element);
         netlist.r.insert(String::from("r1"), r1_element);
         netlist.r.insert(String::from("r2"), r2_element);
-
-        let mut matrix = CircuitMatrix::new();
-        matrix.create_mat_vec_from_netlist(netlist);
-        let mat_vec = matrix.get_current_mat_vec();
-        println!("mat: {}", mat_vec.0);
-        println!("vec: {}", mat_vec.1);
     }
 }

@@ -8,6 +8,7 @@ mod netlist;
 use crate::elements::Element;
 use crate::netlist::Netlist;
 use crate::matrix::CircuitMatrix;
+use crate::matrix::Analysis;
 
 use std::f64::consts::PI as PI;
 use std::collections::HashMap;
@@ -38,23 +39,28 @@ fn main() {
 
     // ログスケールの周波数ベクトル生成
     let frequencies_arr: Array1<_> = Array1::logspace(10.0, 0.0, 9.0, 10);
-    let ang_freq_arr = 2f64 * PI * frequencies_arr;
+    let omega_arr = 2f64 * PI * frequencies_arr;
 
     println!("----- Arg freq for analysis -----");
-    println!("{:?}", ang_freq_arr);
+    println!("{:?}", omega_arr);
     println!("----- Arg freq for analysis -----");
     println!("");
-    println!("----- debug matrix -----");
-    let mut matrix = CircuitMatrix::new();
-    matrix.create_mat_vec_from_netlist(netlist);
+    println!("----- initialize matrix -----");
+    let matrix = CircuitMatrix::new();
     let (mat, vec) = matrix.get_current_mat_vec();
     println!("mat: {}", mat);
     println!("vec: {}", vec);
-    println!("----- debug matrix -----");
+    println!("----- initialize matrix -----");
     println!("");
     println!("----- solve  -----");
-    let result = matrix.solve();
-    println!("result: \n{:?}", result);
+    for omega in omega_arr.iter() {
+        let mut matrix = CircuitMatrix::new();
+        matrix.create_mat_vec_from_netlist(&netlist, Analysis::AC, *omega);
+        let (mat, vec) = matrix.get_current_mat_vec();
+        let _result = matrix.solve();
+        println!("mat: \n{:?}", mat);
+        println!("vec: \n{:?}", vec);
+    }
     println!("----- solve  -----");
     println!("");
 }
