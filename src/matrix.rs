@@ -67,6 +67,32 @@ fn get_element_type(elem: &str) -> Option<ElementType> {
     }
 }
 
+fn remove_ground_from_array(matrix: &Array2<Complex64>) -> Array2<Complex64> {
+    let mut new_matrix: Array2<Complex64> = Array2::from_elem((matrix.nrows() - 1, matrix.ncols() - 1), Complex64::new(0., 0.));
+    for row in 1..matrix.nrows() {
+        for col in 1..matrix.ncols() {
+            new_matrix[[row - 1, col - 1]] = matrix[[row, col]];
+        }
+    }
+    new_matrix
+}
+
+fn remove_ground_from_vector(vector: &Array1<Complex64>) -> Array1<Complex64> {
+    let mut new_vector: Array1<Complex64> = Array1::from_elem(vector.len() - 1, Complex64::new(0., 0.));
+    for index in 1..vector.len() {
+        new_vector[index - 1] = vector[index];
+    }
+    new_vector
+}
+
+fn remove_ground_from_nodes(nodes: &Array1<usize>) -> Array1<usize> {
+    let mut new_nodes: Array1<usize> = Array1::from_elem(nodes.len() - 1, 0);
+    for index in 1..nodes.len() {
+        new_nodes[index - 1] = nodes[index];
+    }
+    new_nodes
+}
+
 #[derive(Debug)]
 pub struct CircuitMatrix {
     pub mat: Array2<Complex64>,
@@ -127,7 +153,7 @@ impl CircuitMatrix {
 
     fn extend_elem_mat_vec(&mut self, elem_mat_vec: (Array2<Complex64>, Array1<Complex64>), pos: usize, neg: usize) -> (Array2<Complex64>, Array1<Complex64>) {
         // 要素０の行列とベクトルを生成
-        let mut arr: Array2<Complex64> = Array::zeros((self.nodes.len(), self.nodes.len()));
+        let mut mat: Array2<Complex64> = Array::zeros((self.nodes.len(), self.nodes.len()));
         let mut vec: Array1<Complex64> = Array::zeros(self.nodes.len());
         // nodes から素子の接続されている要素インデックスを取得
         let mut node_i1: usize = 0;
@@ -143,10 +169,10 @@ impl CircuitMatrix {
         if elem_mat_vec.1.len() == 2 {
         // 2行2列の場合
             let elem_mat = elem_mat_vec.0;
-            arr[[node_i1, node_i1]] += elem_mat[[0, 0]];
-            arr[[node_i1, node_i2]] += elem_mat[[0, 1]];
-            arr[[node_i2, node_i1]] += elem_mat[[1, 0]];
-            arr[[node_i2, node_i2]] += elem_mat[[1, 1]];
+            mat[[node_i1, node_i1]] += elem_mat[[0, 0]];
+            mat[[node_i1, node_i2]] += elem_mat[[0, 1]];
+            mat[[node_i2, node_i1]] += elem_mat[[1, 0]];
+            mat[[node_i2, node_i2]] += elem_mat[[1, 1]];
 
             let elem_vec = elem_mat_vec.1;
             vec[node_i1] += elem_vec[0];
@@ -155,7 +181,7 @@ impl CircuitMatrix {
         // 3行3列の場合
             unimplemented!();
         }
-        (arr, vec)
+        (mat, vec)
     }
 
     fn update_nodes(&mut self, pos: usize, neg: usize) -> () {
@@ -181,20 +207,20 @@ impl CircuitMatrix {
     }
 
     fn ac_mat_vec(&mut self, elem_mat_vec: (Array2<Complex64>, Array1<Complex64>), etype: ElementType, omega: f64) -> (Array2<Complex64>, Array1<Complex64>) {
-        let mat = match etype {
-            ElementType::V => self.ac_mat_vec_V(elem_mat_vec.0, omega),
-            ElementType::C => self.ac_mat_vec_C(elem_mat_vec.0, omega),
-            ElementType::R => self.ac_mat_vec_R(elem_mat_vec.0, omega),
-            ElementType::L => self.ac_mat_vec_R(elem_mat_vec.0, omega),
+        let (mat, vec) = match etype {
+            ElementType::V => self.ac_mat_vec_V(elem_mat_vec, omega),
+            ElementType::C => self.ac_mat_vec_C(elem_mat_vec, omega),
+            ElementType::R => self.ac_mat_vec_R(elem_mat_vec, omega),
+            ElementType::L => self.ac_mat_vec_L(elem_mat_vec, omega),
         };
-        (mat, elem_mat_vec.1)
+        (mat, vec)
     }
 
-    /*
-    fn complete_zero_element_mat_vec(&mut self, ex_mat_vec: &(Array2<Complex64>, Array1<Complex64>)) -> () {
-        unimplemented!();
+    pub fn remove_ground(&mut self) -> () {
+        self.mat = remove_ground_from_array(&self.mat);
+        self.vec = remove_ground_from_vector(&self.vec);
+        self.nodes = remove_ground_from_nodes(&self.nodes);
     }
-    */
 
     fn add_mat_vec(&mut self, mat_vec: &(Array2<Complex64>, Array1<Complex64>)) -> () {
         self.mat = &self.mat + mat_vec.0.clone();

@@ -13,7 +13,9 @@ use crate::matrix::Analysis;
 use std::f64::consts::PI as PI;
 use std::collections::HashMap;
 
+use anyhow::Result;
 use ndarray::*;
+use num_complex::Complex64;
 
 fn main() {
     let c1_element = Element { pos: 2, neg: 0, value: 3.0 };
@@ -53,16 +55,30 @@ fn main() {
     println!("----- initialize matrix -----");
     println!("");
     println!("----- solve  -----");
+    //let mut results: Vec<Result<Array1<Complex64>>> = vec![];
     for omega in omega_arr.iter() {
         let mut matrix = CircuitMatrix::new();
         matrix.create_mat_vec_from_netlist(&netlist, Analysis::AC, *omega);
+        println!("---- before remove GND ----");
         let (mat, vec) = matrix.get_current_mat_vec();
-        let _result = matrix.solve();
         println!("mat: \n{:?}", mat);
         println!("vec: \n{:?}", vec);
+        matrix.remove_ground();
+        println!("---- after remove GND ----");
+        let (mat, vec) = matrix.get_current_mat_vec();
+        println!("mat: \n{:?}", mat);
+        println!("vec: \n{:?}", vec);
+        println!("---- GND ----");
+        //results.push(matrix.solve());
     }
     println!("----- solve  -----");
     println!("");
+
+    /*
+    for result in results.iter() {
+        println!("result: \n{:?}", result);
+    }
+    */
 }
 
 #[cfg(test)]
