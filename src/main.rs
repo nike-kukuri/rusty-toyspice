@@ -18,8 +18,8 @@ use ndarray::*;
 use num_complex::Complex64;
 
 fn main() {
-    let c1_element = Element { pos: 2, neg: 0, value: 3.0 };
-    let c2_element = Element { pos: 3, neg: 0, value: 3.0 };
+    let c1_element = Element { pos: 2, neg: 0, value: 3.0e-6 };
+    let c2_element = Element { pos: 3, neg: 0, value: 3.0e-6 };
     let r1_element = Element { pos: 0, neg: 1, value: 3.0 };
     let r2_element = Element { pos: 1, neg: 2, value: 3.0 };
     let mut netlist = Netlist { 
@@ -55,7 +55,7 @@ fn main() {
     println!("----- initialize matrix -----");
     println!("");
     println!("----- solve  -----");
-    //let mut results: Vec<Result<Array1<Complex64>>> = vec![];
+    let mut results: Vec<Result<Array1<Complex64>>> = vec![];
     for omega in omega_arr.iter() {
         let mut matrix = CircuitMatrix::new();
         matrix.create_mat_vec_from_netlist(&netlist, Analysis::AC, *omega);
@@ -69,16 +69,15 @@ fn main() {
         println!("mat: \n{:?}", mat);
         println!("vec: \n{:?}", vec);
         println!("---- GND ----");
-        //results.push(matrix.solve());
+        results.push(matrix.solve());
     }
     println!("----- solve  -----");
     println!("");
 
-    /*
+    
     for result in results.iter() {
         println!("result: \n{:?}", result);
     }
-    */
 }
 
 #[cfg(test)]

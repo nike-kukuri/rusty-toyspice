@@ -3,7 +3,7 @@
 #![warn(dead_code)]
 
 use anyhow::Result;
-use num_complex::{Complex, Complex64};
+use num_complex::Complex64;
 use ndarray::*;
 use ndarray_linalg::*;
 
@@ -119,7 +119,7 @@ impl CircuitMatrix {
         // element: tuple (1: instance(&str), 2: element(struct Element))
             let etype = get_element_type(element.0); //インスタンスから素子のタイプを確認
             // ノードリストをアップデートする
-            self.update_nodes(element.1.pos, element.1.neg);
+            self.update_nodes(element.1.pos, element.1.neg, etype.clone().unwrap());
             // element ごとのタイプを確認し、固有の行列とベクトルを格納
             let mut elem_mat_vec: (Array2<Complex64>, Array1<Complex64>);
             if let Some(etype) = etype {
@@ -179,12 +179,27 @@ impl CircuitMatrix {
             vec[node_i2] += elem_vec[1];
         } else if elem_mat_vec.1.len() == 3 {
         // 3行3列の場合
-            unimplemented!();
+            let elem_mat = elem_mat_vec.0;
+            let node_i3 = self.nodes.len() - 1;
+            mat[[node_i1, node_i1]] += elem_mat[[0, 0]];
+            mat[[node_i1, node_i2]] += elem_mat[[0, 1]];
+            mat[[node_i1, node_i3]] += elem_mat[[0, 2]];
+            mat[[node_i2, node_i1]] += elem_mat[[1, 0]];
+            mat[[node_i2, node_i2]] += elem_mat[[1, 1]];
+            mat[[node_i2, node_i3]] += elem_mat[[1, 2]];
+            mat[[node_i3, node_i1]] += elem_mat[[2, 0]];
+            mat[[node_i3, node_i2]] += elem_mat[[2, 1]];
+            mat[[node_i3, node_i3]] += elem_mat[[2, 2]];
+
+            let elem_vec = elem_mat_vec.1;
+            vec[node_i1] += elem_vec[0];
+            vec[node_i2] += elem_vec[1];
+            vec[node_i3] += elem_vec[2];
         }
         (mat, vec)
     }
 
-    fn update_nodes(&mut self, pos: usize, neg: usize) -> () {
+    fn update_nodes(&mut self, pos: usize, neg: usize, etype: ElementType) -> () {
         // self.nodesを素子のつながっているノードを見て更新する
         let is_pos = self.nodes.iter().any(|node| node==&pos);
         let is_neg = self.nodes.iter().any(|node| node==&neg);
@@ -203,6 +218,12 @@ impl CircuitMatrix {
             );
             self.mat.extend_with0();
             self.vec.extend_with0();
+        }
+        match etype {
+            ElementType::V => { self.nodes.append(Axis(0), ArrayView1::from(&[100])); }, //TODO
+                                                                                         //電流ノードを識別できるように修正する
+            ElementType::L => { self.nodes.append(Axis(0), ArrayView1::from(&[100])); }, //TODO
+            _ => (),
         }
     }
 

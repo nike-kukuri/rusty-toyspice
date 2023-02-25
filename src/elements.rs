@@ -9,6 +9,7 @@ use crate::matrix::CircuitMatrix;
 
 type tuple_Array2_Array1 = (Array2<Complex64>, Array1<Complex64>);
 
+#[derive(Debug, Copy, Clone)]
 pub enum ElementType {
     V,
     C,
@@ -84,7 +85,7 @@ impl Capacitor for CircuitMatrix {
         (a, b)
     }
     fn ac_mat_vec_C(&mut self, mut elem_mat_vec: tuple_Array2_Array1, omega: f64) -> tuple_Array2_Array1 {
-        elem_mat_vec.0.map_mut(|x| *x * Complex64::new(0., omega));
+        elem_mat_vec.0 = elem_mat_vec.0.map_mut(|x| *x * Complex64::new(0., omega));
         (elem_mat_vec.0, elem_mat_vec.1)
     }
 }
@@ -113,12 +114,6 @@ mod tests {
 
     #[test]
     fn matrix() {
-        let c1_element = Element { pos: 1, neg: 2, value: 3.0 };
-        let mut matrix = CircuitMatrix::new();
-        let (c_matrix, c_vector) = matrix.gen_mat_vec_C(c1_element);
-        assert_eq!(matrix.nodes, array![1, 2]);
-        let c2_element = Element { pos: 3, neg: 4, value: 3.0 };
-        let (c_matrix, c_vector) = matrix.gen_mat_vec_C(c2_element);
-        assert_eq!(matrix.nodes, array![1, 2, 3, 4]);
+        unimplemented!();
     }
 }
