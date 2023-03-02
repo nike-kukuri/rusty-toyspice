@@ -17,12 +17,12 @@ use anyhow::Result;
 use ndarray::*;
 use num_complex::Complex64;
 
-fn main() {
-    let c1_element = Element { pos: 2, neg: 0, value: 3.0e-6 };
-    let c2_element = Element { pos: 3, neg: 0, value: 3.0e-6 };
-    let r1_element = Element { pos: 1, neg: 2, value: 3.0e3 };
-    let r2_element = Element { pos: 2, neg: 3, value: 3.0e3 };
-    let v1_element = Element { pos: 1, neg: 0, value: 3.0 };
+fn main() -> Result<()> {
+    let c1_element = Element { pos: 2, neg: 0, value: 1.0e-3 };
+    let c2_element = Element { pos: 3, neg: 0, value: 1.0e-3 };
+    let r1_element = Element { pos: 1, neg: 2, value: 1.0e3 };
+    let r2_element = Element { pos: 2, neg: 3, value: 1.0e3 };
+    let v1_element = Element { pos: 1, neg: 0, value: 1.0 };
     let mut netlist = Netlist { 
             v: HashMap::new(),
             r: HashMap::new(),
@@ -42,49 +42,48 @@ fn main() {
     println!("");
 
     // ログスケールの周波数ベクトル生成
-    let frequencies_arr: Array1<_> = Array1::logspace(10.0, 0.0, 9.0, 10);
+    let frequencies_arr: Array1<_> = Array1::logspace(10.0, 0.0, 9.0, 100);
     let omega_arr = 2f64 * PI * frequencies_arr;
 
     println!("----- Arg freq for analysis -----");
     println!("{:?}", omega_arr);
     println!("----- Arg freq for analysis -----");
     println!("");
-    println!("----- initialize matrix -----");
-    let matrix = CircuitMatrix::new();
-    let (mat, vec) = matrix.get_current_mat_vec();
-    println!("mat: {}", mat);
-    println!("vec: {}", vec);
-    println!("----- initialize matrix -----");
-    println!("");
     println!("----- solve  -----");
-    let mut results: Vec<Result<Array1<Complex64>>> = vec![];
+    let mut results_z: Vec<Result<Array1<Complex64>>> = vec![];
     for omega in omega_arr.iter() {
         let mut matrix = CircuitMatrix::new();
-        matrix.create_mat_vec_from_netlist(&netlist, Analysis::AC, *omega);
-        println!("---- before remove GND ----");
-        let (mat, vec) = matrix.get_current_mat_vec();
-        println!("mat: \n{:?}", mat);
-        println!("vec: \n{:?}", vec);
-        let nodes = matrix.get_current_nodes();
-        println!("nodes: \n{:?}", nodes);
+        matrix.create_mat_vec_from_netlist(&netlist, Analysis::AC, *omega)?;
         matrix.remove_ground();
-        println!("---- after remove GND ----");
-        let (mat, vec) = matrix.get_current_mat_vec();
-        println!("mat: \n{:?}", mat);
-        println!("vec: \n{:?}", vec);
-        let nodes = matrix.get_current_nodes();
-        println!("nodes: \n{:?}", nodes);
-        println!("---- GND ----");
-        //results.push(matrix.solve());
+        results_z.push(matrix.solve());
     }
     println!("----- solve  -----");
     println!("");
 
-    /*
-    for result in results.iter() {
-        println!("result: \n{:?}", result);
+    let mut results_arg = vec![];
+    let mut results_norm = vec![];
+    let spectre_node = 3; //観測するノード番号
+
+    for result in results_z.iter() {
+        for (node_i, value) in result.as_ref().unwrap().iter().enumerate() {
+            if node_i == spectre_node {
+                results_arg.push(value.arg());
+                results_norm.push(value.norm());
+            }
+        }
     }
-    */
+    println!("----- norm  -----");
+    for norm in results_norm {
+        println!("{norm}");
+    }
+    println!("----- norm  -----");
+    println!("----- arg  -----");
+    for arg in results_arg {
+        println!("{arg}");
+    }
+    println!("----- arg  -----");
+
+    Ok(())
 }
 
 #[cfg(test)]
