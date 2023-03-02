@@ -12,27 +12,29 @@ use crate::elements::{Element, ElementType};
 use crate::elements::{VoltageSource, Capacitor, Resistor, Inductor};
 
 pub enum Analysis {
-    DC,
+    DC, //TODO
     AC,
-    Tran,
+    Tran, //TODO
 }
 
 trait ExtendWith0 {
-    fn extend_with0(&mut self);
+    fn extend_with0(&mut self) -> Result<()> ;
 }
 
 impl ExtendWith0 for ArrayBase<OwnedRepr<Complex64>, Dim<[usize; 2]>> {
-    fn extend_with0(&mut self) {
+    fn extend_with0(&mut self) -> Result<()> {
         let shape = self.shape();
         let (m, n) = (shape[0], shape[1]);
         self.push_column(ArrayView::from(&vec![Complex64::new(0., 0.); m])).ok();
         self.push_row(ArrayView::from(&vec![Complex64::new(0., 0.); n+1])).ok();
+        Ok(())
     }
 }
 
 impl ExtendWith0 for ArrayBase<OwnedRepr<Complex64>, Dim<[usize; 1]>> {
-    fn extend_with0(&mut self) {
-        self.append(Axis(0), ArrayView::from(&vec![Complex64::new(0., 0.); 1]));
+    fn extend_with0(&mut self) -> Result<()> {
+        self.append(Axis(0), ArrayView::from(&vec![Complex64::new(0., 0.); 1]))?;
+        Ok(())
     }
 }
 
@@ -113,20 +115,23 @@ impl CircuitMatrix {
     }
 
     // main method
-    pub fn create_mat_vec_from_netlist(&mut self, netlist: &Netlist, analysis: Analysis, omega: f64) -> () {
+    pub fn create_mat_vec_from_netlist(&mut self, netlist: &Netlist, analysis: Analysis, omega: f64) -> Result<()> {
         let elements = change_vec_from_netlist(&netlist);
         for element in elements.iter() {
-        // element: tuple (1: instance(&str), 2: element(struct Element))
-            let etype = get_element_type(element.0); //インスタンスから素子のタイプを確認
+        // element: tuple (0: instance(&str), 1: element(struct Element))
+            //インスタンスから素子のタイプを確認
+            let etype: Option<ElementType> = get_element_type(element.0);
             // ノードリストをアップデートする
-            self.update_nodes(element.1.pos, element.1.neg, etype.clone().unwrap());
+            self.update_nodes(element.1.pos, element.1.neg, etype.clone().unwrap())?;
             // element ごとのタイプを確認し、固有の行列とベクトルを格納
             let mut elem_mat_vec: (Array2<Complex64>, Array1<Complex64>);
             if let Some(etype) = etype {
                 elem_mat_vec = self.gen_mat_vec_from_element(element.1, &etype);
                 match analysis {
                     Analysis::DC => (),
-                    Analysis::AC => { elem_mat_vec = self.ac_mat_vec(elem_mat_vec, etype, omega) },
+                    Analysis::AC => { 
+                        elem_mat_vec = self.ac_mat_vec(elem_mat_vec, etype, omega) 
+                    },
                     Analysis::Tran => unimplemented!(),
                 }
             } else {
@@ -137,6 +142,7 @@ impl CircuitMatrix {
             // 元の行列・ベクトルと素子の行列・ベクトルを加算
             self.add_mat_vec(&extended_elem_mat_vec);
         }
+        Ok(())
     }
 
     fn gen_mat_vec_from_element(&mut self, elem: Element, etype: &ElementType) -> (Array2<Complex64>, Array1<Complex64>){
@@ -199,7 +205,7 @@ impl CircuitMatrix {
         (mat, vec)
     }
 
-    fn update_nodes(&mut self, pos: usize, neg: usize, etype: ElementType) -> () {
+    fn update_nodes(&mut self, pos: usize, neg: usize, etype: ElementType) -> Result<()> {
         // self.nodesを素子のつながっているノードを見て更新する
         let is_pos = self.nodes.iter().any(|node| node==&pos);
         let is_neg = self.nodes.iter().any(|node| node==&neg);
@@ -207,24 +213,39 @@ impl CircuitMatrix {
             self.nodes.append(
                 Axis(0),
                 ArrayView1::from(&[pos])
-            );
-            self.mat.extend_with0();
-            self.vec.extend_with0();
+            )?;
+            self.mat.extend_with0()?;
+            self.vec.extend_with0()?;
         }
         if !is_neg {
             self.nodes.append(
                 Axis(0),
                 ArrayView1::from(&[neg])
-            );
-            self.mat.extend_with0();
-            self.vec.extend_with0();
+            )?;
+            self.mat.extend_with0()?;
+            self.vec.extend_with0()?;
         }
+        // V or L は電流ノードの追加が必要
         match etype {
-            ElementType::V => { self.nodes.append(Axis(0), ArrayView1::from(&[100])); }, //TODO
-                                                                                         //電流ノードを識別できるように修正する
-            ElementType::L => { self.nodes.append(Axis(0), ArrayView1::from(&[100])); }, //TODO
+            ElementType::V => { 
+                self.nodes.append(
+                    Axis(0),
+                    ArrayView1::from(&[100])
+                )?;
+                self.mat.extend_with0()?;
+                self.vec.extend_with0()?;
+            }, //TODO 電流ノードを識別したい 今は適当に100設定
+            ElementType::L => { 
+                self.nodes.append(
+                    Axis(0),
+                    ArrayView1::from(&[100])
+                )?;
+                self.mat.extend_with0()?;
+                self.vec.extend_with0()?;
+            }, //TODO
             _ => (),
         }
+        Ok(())
     }
 
     fn ac_mat_vec(&mut self, elem_mat_vec: (Array2<Complex64>, Array1<Complex64>), etype: ElementType, omega: f64) -> (Array2<Complex64>, Array1<Complex64>) {
@@ -250,6 +271,10 @@ impl CircuitMatrix {
 
     pub fn get_current_mat_vec(&self) -> (Array2<Complex64>, Array1<Complex64>) {
         (self.mat.clone(), self.vec.clone())
+    }
+
+    pub fn get_current_nodes(&self) -> Array1<usize> {
+        self.nodes.clone()
     }
 
     pub fn get_number_of_nodes(&self) -> usize {

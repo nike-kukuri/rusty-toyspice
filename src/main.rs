@@ -20,8 +20,9 @@ use num_complex::Complex64;
 fn main() {
     let c1_element = Element { pos: 2, neg: 0, value: 3.0e-6 };
     let c2_element = Element { pos: 3, neg: 0, value: 3.0e-6 };
-    let r1_element = Element { pos: 0, neg: 1, value: 3.0 };
-    let r2_element = Element { pos: 1, neg: 2, value: 3.0 };
+    let r1_element = Element { pos: 1, neg: 2, value: 3.0e3 };
+    let r2_element = Element { pos: 2, neg: 3, value: 3.0e3 };
+    let v1_element = Element { pos: 1, neg: 0, value: 3.0 };
     let mut netlist = Netlist { 
             v: HashMap::new(),
             r: HashMap::new(),
@@ -32,6 +33,7 @@ fn main() {
     netlist.c.insert(String::from("c2"), c2_element);
     netlist.r.insert(String::from("r1"), r1_element);
     netlist.r.insert(String::from("r2"), r2_element);
+    netlist.v.insert(String::from("v1"), v1_element);
 
     println!("");
     println!("----- Runnning Netlist -----");
@@ -63,21 +65,26 @@ fn main() {
         let (mat, vec) = matrix.get_current_mat_vec();
         println!("mat: \n{:?}", mat);
         println!("vec: \n{:?}", vec);
+        let nodes = matrix.get_current_nodes();
+        println!("nodes: \n{:?}", nodes);
         matrix.remove_ground();
         println!("---- after remove GND ----");
         let (mat, vec) = matrix.get_current_mat_vec();
         println!("mat: \n{:?}", mat);
         println!("vec: \n{:?}", vec);
+        let nodes = matrix.get_current_nodes();
+        println!("nodes: \n{:?}", nodes);
         println!("---- GND ----");
-        results.push(matrix.solve());
+        //results.push(matrix.solve());
     }
     println!("----- solve  -----");
     println!("");
 
-    
+    /*
     for result in results.iter() {
         println!("result: \n{:?}", result);
     }
+    */
 }
 
 #[cfg(test)]
