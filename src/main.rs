@@ -7,6 +7,7 @@ mod netlist;
 
 use crate::elements::Element;
 use crate::netlist::Netlist;
+use crate::netlist::parse_netlist;
 use crate::matrix::CircuitMatrix;
 use crate::matrix::Analysis;
 
@@ -18,6 +19,9 @@ use ndarray::*;
 use num_complex::Complex64;
 
 fn main() -> Result<()> {
+    let netlist: Netlist = parse_netlist().unwrap();
+
+    /*
     let c1_element = Element { pos: 2, neg: 0, value: 1.0e-3 };
     let c2_element = Element { pos: 3, neg: 0, value: 1.0e-3 };
     let r1_element = Element { pos: 1, neg: 2, value: 1.0e3 };
@@ -34,6 +38,7 @@ fn main() -> Result<()> {
     netlist.r.insert(String::from("r1"), r1_element);
     netlist.r.insert(String::from("r2"), r2_element);
     netlist.v.insert(String::from("v1"), v1_element);
+    */
 
     println!("");
     println!("----- Runnning Netlist -----");
@@ -55,8 +60,9 @@ fn main() -> Result<()> {
         let mut matrix = CircuitMatrix::new();
         matrix.create_mat_vec_from_netlist(&netlist, Analysis::AC, *omega)?;
         matrix.remove_ground();
-        results_z.push(matrix.solve());
+        //results_z.push(matrix.solve());
     }
+    /*
     println!("----- solve  -----");
     println!("");
 
@@ -82,6 +88,7 @@ fn main() -> Result<()> {
         println!("{arg}");
     }
     println!("----- arg  -----");
+    */
 
     Ok(())
 }
