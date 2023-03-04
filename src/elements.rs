@@ -63,7 +63,7 @@ impl VoltageSource for CircuitMatrix {
 
 impl Resistor for CircuitMatrix {
     fn gen_mat_vec_R(&mut self, elem: Element) -> (Array2<Complex64>, Array1<Complex64>) {
-        let G = elem.value;
+        let G = 1.0 / elem.value;
         let a = array![
             [Complex64::new(G, 0.), Complex::new(-G, 0.)],
             [Complex64::new(-G, 0.), Complex::new(G, 0.)]];
