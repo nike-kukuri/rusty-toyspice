@@ -67,13 +67,13 @@ pub fn parse_netlist() -> Result<Netlist, Box<dyn std::error::Error>> {
     }
 
     for (i, elem_i) in elem_ins.iter().enumerate() {
-        if elem_i.chars().next().unwrap() == 'v' {
+        if elem_i.starts_with('v') {
             netlist.v.insert(elem_i.to_string(), elem_vec[i]);
         }
-        if elem_i.chars().next().unwrap() == 'r' {
+        if elem_i.starts_with('r') {
             netlist.r.insert(elem_i.to_string(), elem_vec[i]);
         }
-        if elem_i.chars().next().unwrap() == 'c' {
+        if elem_i.starts_with('c') {
             netlist.c.insert(elem_i.to_string(), elem_vec[i]);
         }
     }
