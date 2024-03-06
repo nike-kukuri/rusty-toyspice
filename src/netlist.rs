@@ -50,6 +50,9 @@ pub fn parse_netlist() -> Result<Netlist, Box<dyn std::error::Error>> {
             line_vec.push(line_temp);
         }
         let l: Vec<&str> = line_vec.last().unwrap().split_whitespace().collect();
+        if l.len() != 4 {
+            panic!("Please, check netlist format: at one line, 4columns split with white spaces")
+        }
         elem_ins.push(l[0].to_string());
         node_pos.push(l[1].parse::<usize>().unwrap());
         node_neg.push(l[2].parse::<usize>().unwrap());
