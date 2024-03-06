@@ -1,28 +1,29 @@
 #![warn(unused_variables)]
 #![warn(unused_imports)]
 #![warn(dead_code)]
-use crate::elements::Element;
+use crate::elements::{Element, ElementType};
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::collections::HashMap;
 use std::env;
 
 #[derive(Debug)]
 pub struct Netlist {
-    pub v: HashMap<String, Element>,
-    pub r: HashMap<String, Element>,
-    pub c: HashMap<String, Element>,
-    pub l: HashMap<String, Element>,
+    pub v: Vec<Element>,
+    pub i: Vec<Element>,
+    pub r: Vec<Element>,
+    pub c: Vec<Element>,
+    pub l: Vec<Element>,
 }
 
 impl Netlist {
     fn new() -> Self {
         Self {
-            v: HashMap::new(),
-            r: HashMap::new(),
-            c: HashMap::new(),
-            l: HashMap::new(),
+            v: Vec::new(),
+            i: Vec::new(),
+            r: Vec::new(),
+            c: Vec::new(),
+            l: Vec::new(),
         }
     }
     fn total_elements(&self) -> usize {
@@ -54,32 +55,41 @@ pub fn parse_netlist() -> Result<Netlist, Box<dyn std::error::Error>> {
             panic!("Please, check netlist format: at one line, 4columns split with white spaces")
         }
         elem_ins.push(l[0].to_string());
-        node_pos.push(l[1].parse::<usize>().unwrap());
-        node_neg.push(l[2].parse::<usize>().unwrap());
+        node_pos.push(l[1].to_string());
+        node_neg.push(l[2].to_string());
         elem_val.push(l[3].parse::<f64>().unwrap()); 
     }
 
     let mut elem_vec: Vec<Element> = Vec::new();
-    for (i, _) in elem_ins.iter().enumerate() {
-        elem_vec.push(
-            Element {
-                pos: node_pos[i],
-                neg: node_neg[i],
-                value: elem_val[i],
-            });
-    }
-
-    for (i, elem_i) in elem_ins.iter().enumerate() {
-        if elem_i.starts_with('v') {
-            netlist.v.insert(elem_i.to_string(), elem_vec[i]);
-        }
-        if elem_i.starts_with('r') {
-            netlist.r.insert(elem_i.to_string(), elem_vec[i]);
-        }
-        if elem_i.starts_with('c') {
-            netlist.c.insert(elem_i.to_string(), elem_vec[i]);
+    for (i, name) in elem_ins.iter().enumerate() {
+        let kind = classification_kind(name.to_lowercase().chars().nth(0).unwrap());
+        let elem = Element {
+            name: name.clone(),
+            pos: node_pos[i].clone(),
+            neg: node_neg[i].clone(),
+            value: elem_val[i],
+            kind: kind
+        };
+        match kind {
+            ElementType::V => netlist.v.push(elem),
+            ElementType::I => netlist.i.push(elem),
+            ElementType::R => netlist.r.push(elem),
+            ElementType::C => netlist.c.push(elem),
+            ElementType::L => netlist.l.push(elem),
+            _ => panic!("In netlist, exist NO defined element")
         }
     }
 
     Ok(netlist)
+}
+
+fn classification_kind(ins: char) -> ElementType {
+    match ins {
+        'v' => ElementType::V,
+        'i' => ElementType::I,
+        'r' => ElementType::R,
+        'c' => ElementType::C,
+        'l' => ElementType::L,
+        _ => panic!("In netlist, exist NO defined element.")
+    }
 }
