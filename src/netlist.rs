@@ -41,6 +41,13 @@ pub fn parse_netlist() -> Result<Netlist, Box<dyn std::error::Error>> {
     let mut node_neg = Vec::new();
     let mut line_vec = Vec::new();
     for line in BufReader::new(File::open(filepath_netlist)?).lines() {
+        if let Ok(line) = &line {
+            if let Ok(line) = &line {
+                if line.is_empty() || line.starts_with('#') {
+                    continue;
+                }
+            }
+        }
         {
             let line_temp = line.unwrap().to_string();
             line_vec.push(line_temp);
