@@ -1,6 +1,7 @@
 #![warn(unused_variables)]
 #![warn(unused_imports)]
 #![warn(dead_code)]
+#![allow(non_snake_case)]
 
 use num_complex::{Complex, Complex64};
 use ndarray::*;
