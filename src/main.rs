@@ -17,6 +17,14 @@ use std::collections::HashMap;
 use anyhow::Result;
 use ndarray::*;
 use num_complex::Complex64;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Config {
+    foo: String,
+    spectre_node: Vec<String>,
+    gnd: String,
+}
 
 fn main() -> Result<()> {
     let netlist: Netlist = parse_netlist().unwrap();

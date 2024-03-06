@@ -30,7 +30,6 @@ impl Netlist {
     }
 }
 
-// TODO 空行スキップ
 pub fn parse_netlist() -> Result<Netlist, Box<dyn std::error::Error>> {
     let mut netlist: Netlist = Netlist::new();
     let args: Vec<String> = env::args().collect();
@@ -42,10 +41,8 @@ pub fn parse_netlist() -> Result<Netlist, Box<dyn std::error::Error>> {
     let mut line_vec = Vec::new();
     for line in BufReader::new(File::open(filepath_netlist)?).lines() {
         if let Ok(line) = &line {
-            if let Ok(line) = &line {
-                if line.is_empty() || line.starts_with('#') {
-                    continue;
-                }
+            if line.is_empty() || line.starts_with('#') {
+                continue;
             }
         }
         {
