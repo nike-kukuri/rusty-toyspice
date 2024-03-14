@@ -139,10 +139,73 @@ impl Inductor for CircuitMatrix {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::Netlist;
     use crate::matrix::CircuitMatrix;
+    use crate::elements::{Element, ElementType};
 
     #[test]
-    fn matrix() {
-        unimplemented!();
+    fn element_initial() {
+        let matrix = CircuitMatrix::new();
+        let a = array![
+            [Complex64::new(0., 0.), Complex64::new(0., 0.)],
+            [Complex64::new(0., 0.), Complex64::new(0., 0.)]
+        ];
+        let b = array![Complex64::new(0., 0.), Complex64::new(0., 0.)];
+        let c = array!["initial_node0".to_string(), "initial_node1".to_string()];
+        assert_eq!(CircuitMatrix{
+            mat: a,
+            vec: b,
+            nodes: c,
+        }, matrix);
+    }
+
+    #[test]
+    fn generated_element_matrix_V() {
+        let mut matrix = CircuitMatrix::new();
+        let elem = Element {
+            name: String::from("v1"),
+            pos: String::from("0"),
+            neg: String::from("1"),
+            value: 3.0,
+            kind: ElementType::V,
+        };
+        let a = array![
+            [Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(1., 0.)],
+            [Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(-1., 0.)],
+            [Complex64::new(1., 0.), Complex64::new(-1., 0.), Complex64::new(0., 0.)]
+        ];
+        let b = array![Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(-3.0, 0.)];
+        assert_eq!(matrix.gen_mat_vec(elem), (a, b));
+    }
+
+    #[test]
+    fn generated_element_matrix_C() {
+        let mut matrix = CircuitMatrix::new();
+        let elem = Element {
+            name: String::from("c1"),
+            pos: String::from("0"),
+            neg: String::from("1"),
+            value: 3.0,
+            kind: ElementType::C,
+        };
+        let a = array![
+            [Complex64::new(3.0, 0.), Complex64::new(-3.0, 0.)],
+            [Complex64::new(-3.0, 0.), Complex64::new(3.0, 0.)],
+        ];
+        let b = array![Complex64::new(0., 0.), Complex64::new(0., 0.)];
+        assert_eq!(matrix.gen_mat_vec(elem), (a, b));
+
+        let a = array![
+            [Complex64::new(0., 6.0), Complex64::new(0., 6.0)],
+            [Complex64::new(0., 6.0), Complex64::new(0., 6.0)],
+        ];
+        let b = array![Complex64::new(0., 0.), Complex64::new(0., 0.)];
+        let c = array![
+            [Complex64::new(3.0, 0.), Complex64::new(-3.0, 0.)],
+            [Complex64::new(-3.0, 0.), Complex64::new(3.0, 0.)],
+        ];
+        let d = array![Complex64::new(0., 0.), Complex64::new(0., 0.)];
+        assert_eq!(matrix.ac_mat_vec_C((c, d), 2.0), (a, b)); // 2.0 -> omega
     }
 }

@@ -66,7 +66,7 @@ fn main() -> Result<()> {
     let mut results_z: Vec<Result<Array1<Complex64>>> = vec![];
     for omega in omega_arr.iter() {
         let mut matrix = CircuitMatrix::new();
-        matrix.create_mat_vec_from_netlist(&netlist, Analysis::AC, *omega)?;
+        matrix.create_mat_vec(&netlist, Analysis::AC, *omega)?;
         matrix.remove_ground();
         //results_z.push(matrix.solve());
     }

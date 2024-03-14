@@ -50,15 +50,15 @@ pub fn netlist_serialize(netlist: &Netlist) -> Vec<&Element> {
 }
 
 fn get_element_type(elem: &str) -> Option<ElementType> {
-    if elem.chars().next().unwrap() == 'v' || elem.chars().next().unwrap() == 'V' {
+    if elem.starts_with('v') || elem.starts_with('V') {
         Some(ElementType::V)
-    } else if elem.chars().next().unwrap() == 'i' || elem.chars().next().unwrap() == 'C' {
+    } else if elem.starts_with('i') || elem.starts_with('I') {
         Some(ElementType::I)
-    } else if elem.chars().next().unwrap() == 'c' || elem.chars().next().unwrap() == 'C' {
+    } else if elem.starts_with('c') || elem.starts_with('C') {
         Some(ElementType::C)
-    } else if elem.chars().next().unwrap() == 'l' || elem.chars().next().unwrap() == 'L' {
+    } else if elem.starts_with('l') || elem.starts_with('L') {
         Some(ElementType::L)
-    } else if elem.chars().next().unwrap() == 'r' || elem.chars().next().unwrap() == 'R' {
+    } else if elem.starts_with('r') || elem.starts_with('R') {
         Some(ElementType::R)
     } else {
         None
@@ -91,7 +91,7 @@ fn remove_ground_from_nodes(nodes: &Array1<usize>) -> Array1<usize> {
     new_nodes
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CircuitMatrix {
     pub mat: Array2<Complex64>,
     pub vec: Array1<Complex64>,
@@ -111,7 +111,7 @@ impl CircuitMatrix {
     }
 
     // main method
-    pub fn create_mat_vec_from_netlist(&mut self, netlist: &Netlist, analysis: Analysis, omega: f64) -> Result<()> {
+    pub fn create_mat_vec(&mut self, netlist: &Netlist, analysis: Analysis, omega: f64) -> Result<()> {
         let elements = netlist_serialize(netlist);
         for elem in elements.iter() {
             self.update_nodes(elem.pos.clone(), elem.neg.clone(), elem.kind)?;
@@ -136,7 +136,7 @@ impl CircuitMatrix {
         Ok(())
     }
 
-    fn gen_mat_vec(&mut self, elem: Element) -> (Array2<Complex64>, Array1<Complex64>){
+    pub fn gen_mat_vec(&mut self, elem: Element) -> (Array2<Complex64>, Array1<Complex64>){
         match elem.kind {
             ElementType::V => self.gen_mat_vec_V(elem),
             ElementType::I => self.gen_mat_vec_I(elem),
@@ -265,9 +265,9 @@ impl CircuitMatrix {
         (self.mat.clone(), self.vec.clone())
     }
 
-    ///pub fn get_current_nodes(&self) -> Array1<usize> {
-    ///    self.nodes.clone()
-    ///}
+    pub fn get_current_nodes(&self) -> Array1<String> {
+        self.nodes.clone()
+    }
 
     pub fn get_number_of_nodes(&self) -> usize {
         self.nodes.len()
@@ -282,21 +282,53 @@ impl CircuitMatrix {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
+
+    use crate::netlist::Netlist;
+    use crate::elements::Element;
 
     #[test]
-    fn matrix() {
-        let c1_element = Element { pos: 2, neg: 0, value: 3.0 };
-        let r1_element = Element { pos: 0, neg: 1, value: 3.0 };
-        let r2_element = Element { pos: 1, neg: 2, value: 3.0 };
-        let mut netlist = Netlist { 
-                v: HashMap::new(),
-                r: HashMap::new(),
-                c: HashMap::new(),
-                l: HashMap::new(),
+    fn nodes() {
+        let v1_element = Element {
+            name: "v1".to_string(),
+            pos: "0".to_string(),
+            neg: "1".to_string(),
+            value: 3.0,
+            kind: ElementType::V,
         };
-        netlist.c.insert(String::from("c1"), c1_element);
-        netlist.r.insert(String::from("r1"), r1_element);
-        netlist.r.insert(String::from("r2"), r2_element);
+        let c1_element = Element {
+            name: "c1".to_string(),
+            pos: "1".to_string(),
+            neg: "2".to_string(),
+            value: 1.0e-6,
+            kind: ElementType::C,
+        };
+        let r1_element = Element {
+            name: "r1".to_string(),
+            pos: "2".to_string(),
+            neg: "0".to_string(),
+            value: 1.0,
+            kind: ElementType::R,
+        };
+        let mut netlist = Netlist {
+            v: Vec::new(),
+            i: Vec::new(),
+            r: Vec::new(),
+            c: Vec::new(),
+            l: Vec::new(),
+        };
+        netlist.v.push(v1_element);
+        netlist.c.push(c1_element);
+        netlist.r.push(r1_element);
+
+        let mut matrix = CircuitMatrix::new();
+        let freq: f64 = 1.0;
+        //let gnd = "0";
+        let _ = matrix.create_mat_vec(&netlist, Analysis::AC, freq);
+
+        assert_eq!(
+            array!["1".to_string(), "i999".to_string(), "2".to_string()],
+            matrix.get_current_nodes()
+        );
+
     }
 }
