@@ -29,30 +29,9 @@ struct Config {
 fn main() -> Result<()> {
     let netlist: Netlist = parse_netlist().unwrap();
 
-    /*
-    let c1_element = Element { pos: 2, neg: 0, value: 1.0e-3 };
-    let c2_element = Element { pos: 3, neg: 0, value: 1.0e-3 };
-    let r1_element = Element { pos: 1, neg: 2, value: 1.0e3 };
-    let r2_element = Element { pos: 2, neg: 3, value: 1.0e3 };
-    let v1_element = Element { pos: 1, neg: 0, value: 1.0 };
-    let mut netlist = Netlist { 
-            v: HashMap::new(),
-            r: HashMap::new(),
-            c: HashMap::new(),
-            l: HashMap::new(),
-    };
-    netlist.c.insert(String::from("c1"), c1_element);
-    netlist.c.insert(String::from("c2"), c2_element);
-    netlist.r.insert(String::from("r1"), r1_element);
-    netlist.r.insert(String::from("r2"), r2_element);
-    netlist.v.insert(String::from("v1"), v1_element);
-    */
-
-    println!("");
     println!("----- Runnning Netlist -----");
     println!("{:?}", &netlist);
     println!("----- Runnning Netlist -----");
-    println!("");
 
     // ログスケールの周波数ベクトル生成
     let frequencies_arr: Array1<_> = Array1::logspace(10.0, 0.0, 9.0, 100);
@@ -61,13 +40,13 @@ fn main() -> Result<()> {
     println!("----- Arg freq for analysis -----");
     println!("{:?}", omega_arr);
     println!("----- Arg freq for analysis -----");
-    println!("");
     println!("----- solve  -----");
     let mut results_z: Vec<Result<Array1<Complex64>>> = vec![];
+    let gnd = "0"; // temporary
     for omega in omega_arr.iter() {
         let mut matrix = CircuitMatrix::new();
-        matrix.create_mat_vec(&netlist, Analysis::AC, *omega)?;
-        matrix.remove_ground();
+        matrix.create_mat_vec(&netlist, Analysis::AC, *omega, gnd)?;
+        matrix.remove_ground(gnd);
         //results_z.push(matrix.solve());
     }
     /*

@@ -49,30 +49,55 @@ pub fn netlist_serialize(netlist: &Netlist) -> Vec<&Element> {
     ret_vec
 }
 
-fn remove_ground_from_array(matrix: &Array2<Complex64>) -> Array2<Complex64> {
+// TODO specific GND remove by user setting
+fn remove_ground_from_array(matrix: &Array2<Complex64>, idx_gnd: usize) -> Array2<Complex64> {
     let mut new_matrix: Array2<Complex64> = Array2::from_elem((matrix.nrows() - 1, matrix.ncols() - 1), Complex64::new(0., 0.));
-    for row in 1..matrix.nrows() {
-        for col in 1..matrix.ncols() {
-            new_matrix[[row - 1, col - 1]] = matrix[[row, col]];
+    for row in 0..idx_gnd {
+        for col in 0..idx_gnd {
+            new_matrix[[row , col]] = matrix[[row, col]];
+        }
+    }
+    for row in idx_gnd+1..matrix.nrows() {
+        for col in idx_gnd+1..matrix.ncols() {
+            new_matrix[[row-1 , col-1]] = matrix[[row, col]];
         }
     }
     new_matrix
 }
 
-fn remove_ground_from_vector(vector: &Array1<Complex64>) -> Array1<Complex64> {
+fn remove_ground_from_vector(vector: &Array1<Complex64>, idx_gnd: usize) -> Array1<Complex64> {
     let mut new_vector: Array1<Complex64> = Array1::from_elem(vector.len() - 1, Complex64::new(0., 0.));
-    for index in 1..vector.len() {
-        new_vector[index - 1] = vector[index];
+    for i in 0..idx_gnd {
+        new_vector[i] = vector[i].clone();
+    }
+    for i in idx_gnd+1..vector.len() {
+        new_vector[i-1] = vector[i].clone();
     }
     new_vector
 }
 
-fn remove_ground_from_nodes(nodes: &Array1<usize>) -> Array1<usize> {
-    let mut new_nodes: Array1<usize> = Array1::from_elem(nodes.len() - 1, 0);
-    for index in 1..nodes.len() {
-        new_nodes[index - 1] = nodes[index];
+fn remove_ground_from_nodes(nodes: &Array1<String>, gnd: String) -> (Array1<String>, usize) {
+    let mut idx_gnd: usize = 0;
+    for (i, n) in nodes.iter().enumerate() {
+        if n == &gnd {
+            idx_gnd == i;
+        }
     }
-    new_nodes
+    let empty_value: String = "0".to_string();
+    let mut new_nodes: Array1<String> = Array1::from_elem(1, empty_value);
+    let empty_value: String = "0".to_string();
+    if !nodes.is_empty() {
+        new_nodes = Array1::from_elem(nodes.len() - 1, empty_value);
+    } else {
+        println!("[matrix.rs]: nodes: {:?}", nodes);
+    }
+    for i in 0..idx_gnd {
+        new_nodes[i] = nodes[i].clone();
+    }
+    for i in idx_gnd+1..nodes.len() {
+        new_nodes[i-1] = nodes[i].clone();
+    }
+    (new_nodes, idx_gnd)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -95,17 +120,15 @@ impl CircuitMatrix {
     }
 
     // main method
-    pub fn create_mat_vec(&mut self, netlist: &Netlist, analysis: Analysis, omega: f64) -> Result<()> {
+    pub fn create_mat_vec(&mut self, netlist: &Netlist, analysis: Analysis, omega: f64, gnd: &str) -> Result<()> {
         let elements = netlist_serialize(netlist);
         for elem in elements.iter() {
             self.update_nodes(elem.pos.clone(), elem.neg.clone(), elem.kind)?;
 
-            let mut elem_mat_vec: (Array2<Complex64>, Array1<Complex64>) = self.gen_mat_vec((*elem).clone());
+            let mut elem_mat_vec = self.gen_mat_vec((*elem).clone());
             match analysis {
                 Analysis::_DC => (),
-                Analysis::AC => { 
-                    elem_mat_vec = self.ac_mat_vec(elem_mat_vec, elem.kind, omega) 
-                },
+                Analysis::AC => { elem_mat_vec = self.ac_mat_vec(elem_mat_vec, elem.kind, omega) },
                 Analysis::_Tran => unimplemented!(),
             }
 
@@ -114,9 +137,9 @@ impl CircuitMatrix {
                 elem.pos.clone(),
                 elem.neg.clone()
             );
-            // 元の行列・ベクトルと素子の行列・ベクトルを加算
             self.add_mat_vec(&extended_elem_mat_vec);
         }
+        self.remove_ground(gnd);
         Ok(())
     }
 
@@ -220,6 +243,18 @@ impl CircuitMatrix {
                 _ => (),
             }
         }
+
+        // if not eliminated initial node
+        let is_initial = self.nodes.iter().any(|node| node==&"initial_node0".to_string()) && self.nodes.iter().any(|node| node==&"initial_node1".to_string());
+        if is_initial {
+            let mut idx;
+            (self.nodes, idx) = remove_ground_from_nodes(&self.nodes.clone(), "initial_node0".to_string());
+            self.vec = remove_ground_from_vector(&self.vec.clone(), idx);
+            self.mat = remove_ground_from_array(&self.mat.clone(), idx);
+            (self.nodes, idx) = remove_ground_from_nodes(&self.nodes.clone(), "initial_node1".to_string());
+            self.vec = remove_ground_from_vector(&self.vec.clone(), idx);
+            self.mat = remove_ground_from_array(&self.mat.clone(), idx);
+        }
         Ok(())
     }
 
@@ -234,10 +269,11 @@ impl CircuitMatrix {
         (mat, vec)
     }
 
-    pub fn remove_ground(&mut self) {
-        self.mat = remove_ground_from_array(&self.mat);
-        self.vec = remove_ground_from_vector(&self.vec);
-        //self.nodes = remove_ground_from_nodes(&self.nodes);
+    pub fn remove_ground(&mut self, gnd: &str) {
+        let idx_gnd: usize;
+        (self.nodes, idx_gnd) = remove_ground_from_nodes(&self.nodes, gnd.to_string());
+        self.mat = remove_ground_from_array(&self.mat, idx_gnd);
+        self.vec = remove_ground_from_vector(&self.vec, idx_gnd);
     }
 
     fn add_mat_vec(&mut self, mat_vec: &(Array2<Complex64>, Array1<Complex64>)) -> () {
@@ -306,8 +342,8 @@ mod tests {
 
         let mut matrix = CircuitMatrix::new();
         let freq: f64 = 1.0;
-        //let gnd = "0";
-        let _ = matrix.create_mat_vec(&netlist, Analysis::AC, freq);
+        let gnd = "0";
+        let _ = matrix.create_mat_vec(&netlist, Analysis::AC, freq, gnd);
 
         assert_eq!(
             array!["1".to_string(), "i999".to_string(), "2".to_string()],
