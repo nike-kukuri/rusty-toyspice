@@ -49,22 +49,6 @@ pub fn netlist_serialize(netlist: &Netlist) -> Vec<&Element> {
     ret_vec
 }
 
-fn get_element_type(elem: &str) -> Option<ElementType> {
-    if elem.starts_with('v') || elem.starts_with('V') {
-        Some(ElementType::V)
-    } else if elem.starts_with('i') || elem.starts_with('I') {
-        Some(ElementType::I)
-    } else if elem.starts_with('c') || elem.starts_with('C') {
-        Some(ElementType::C)
-    } else if elem.starts_with('l') || elem.starts_with('L') {
-        Some(ElementType::L)
-    } else if elem.starts_with('r') || elem.starts_with('R') {
-        Some(ElementType::R)
-    } else {
-        None
-    }
-}
-
 fn remove_ground_from_array(matrix: &Array2<Complex64>) -> Array2<Complex64> {
     let mut new_matrix: Array2<Complex64> = Array2::from_elem((matrix.nrows() - 1, matrix.ncols() - 1), Complex64::new(0., 0.));
     for row in 1..matrix.nrows() {
