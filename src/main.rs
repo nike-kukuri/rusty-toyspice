@@ -5,7 +5,6 @@ mod elements;
 mod matrix;
 mod netlist;
 
-use crate::elements::Element;
 use crate::netlist::Netlist;
 use crate::netlist::parse_netlist;
 use crate::matrix::CircuitMatrix;
@@ -27,27 +26,30 @@ struct Config {
 }
 
 fn main() -> Result<()> {
-    let netlist: Netlist = parse_netlist().unwrap();
+    let netlist: Netlist = dbg!(parse_netlist().unwrap()); // TODO error handling
 
     println!("----- Runnning Netlist -----");
     println!("{:?}", &netlist);
     println!("----- Runnning Netlist -----");
 
-    // ログスケールの周波数ベクトル生成
+    // ====== Generate logscale frequencies array
     let frequencies_arr: Array1<_> = Array1::logspace(10.0, 0.0, 9.0, 100);
     let omega_arr = 2f64 * PI * frequencies_arr;
 
-    println!("----- Arg freq for analysis -----");
-    println!("{:?}", omega_arr);
-    println!("----- Arg freq for analysis -----");
+    // ====== Settings read in section
+    println!("[main.rs] ----- Start parse config json -----");
+    let gnd = "0"; // temporary
+    println!("[main.rs] ----- End parse config json -----");
+    println!();
+
+    // ====== Generate and solve matrix section
     println!("----- solve  -----");
     let mut results_z: Vec<Result<Array1<Complex64>>> = vec![];
-    let gnd = "0"; // temporary
     for omega in omega_arr.iter() {
         let mut matrix = CircuitMatrix::new();
         matrix.create_mat_vec(&netlist, Analysis::AC, *omega, gnd)?;
         matrix.remove_ground(gnd);
-        //results_z.push(matrix.solve());
+        results_z.push(matrix.solve());
     }
     /*
     println!("----- solve  -----");
